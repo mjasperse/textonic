@@ -123,7 +123,6 @@ class TexTonicUI(QtGui.QMainWindow):
         self.autoTimer.timeout.connect(self.workerStart)
         self.editor.textChanged.connect(self.onChange)
         
-        self.resize(500,300)
         self.show()
         
     def checkAppExists(self,name,file,query):
@@ -317,9 +316,7 @@ class TexTonicUI(QtGui.QMainWindow):
         if modified and not self.isModified:
             self.isModified = True
             # enable Save menu
-            print self.filename
             self.fileMenu.actions()[3].setEnabled(self.filename is not None)
-            print self.fileMenu.actions()[3].text()
         # start the renderer timer
         if modified and self.auto: self.autoTimer.start()
         self.worker.hasChanged = True
@@ -404,6 +401,7 @@ class TexTonicUI(QtGui.QMainWindow):
         self.worker.tex.res = int(self.settings.value('res',300))
         self.worker.tex.outline = self.settings.value('outline','true') == 'true'
         self.auto = self.settings.value('auto','true') == 'true'
+        self.resize(self.settings.value('winsz', self.size()))
         
         latex = self.checkAppExists('PDFLatex',self.settings.value('latex',self.worker.tex.latex),'--version')
         if latex is None: return False
@@ -420,6 +418,7 @@ class TexTonicUI(QtGui.QMainWindow):
         self.settings.setValue('auto',self.auto)
         self.settings.setValue('latex',self.worker.tex.latex)
         self.settings.setValue('gs',self.worker.tex.gs)
+        self.settings.setValue('winsz',self.size())
         
         
 if __name__ == '__main__':
