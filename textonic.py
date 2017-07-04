@@ -69,12 +69,12 @@ class TexTonic:
         gscmd = self._baseGS()
         gsextra = []
         if fmt in ('PNG',2):
-            dest = 'textonic.png'
+            dest = 'output.png'
             dev = 'pngalpha'
             # these need to go AFTER the device specification
             gsextra = ['-g%dx%d'%(w,h),'-c','<</Install {-%d -%d translate}>> setpagedevice'%(int(bbox[0]),int(bbox[1]))]
         else:
-            dest = 'textonic.eps'
+            dest = 'output.eps'
             dev = 'epswrite'
             # crop by replacing the BBOX in the EPS
             gscmd = gscmd[:4] + ['-dEPSCrop']
@@ -84,7 +84,7 @@ class TexTonic:
         if fmt in ('PDF',0):
             # process via EPS to ensure that fonts get outlined
             src = dest
-            dest = 'textonic_crop.pdf'
+            dest = 'output.pdf'
             if self._exec(gscmd+['-o',dest,'-sDEVICE=pdfwrite','-f',src],cb):
                 raise RuntimeError('Ghostscript PDF conversion failed')
         return dest

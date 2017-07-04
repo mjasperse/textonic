@@ -31,7 +31,7 @@ class WorkerObj(QtCore.QObject):
             self.format = fmt
             if not self.run(): return False
         try:
-            self.tex.clipboard('textonic_crop.pdf' if fmt == 'PDF' else ('textonic.'+fmt),fmt)
+            self.tex.clipboard('output.'+fmt)
         except Exception as E:
             self.finished.emit(str(E))
             return False
@@ -88,6 +88,7 @@ class TexTonicUI(QtGui.QMainWindow):
         super(TexTonicUI,self).__init__()
         self.setWindowTitle('TexTonic')
         self.isModified = False
+        self.filename = None
         
         self.thread = QtCore.QThread()
         self.worker = WorkerObj()
@@ -319,7 +320,7 @@ class TexTonicUI(QtGui.QMainWindow):
         QtGui.QApplication.processEvents()
         
     def website(self):
-        pass
+        QtGui.QDesktopServices.openUrl('http://bitbucket.org/martijnj/textonic')
         
     def about(self):
         QtGui.QMessageBox.information(self,"About",
@@ -328,16 +329,47 @@ class TexTonicUI(QtGui.QMainWindow):
             &copy; 2017 by Martijn Jasperse""")
         
     def closeEvent(self,e):
-        if self.isModified:
-            pass
+        if not self.saveChanges():
+            e.ignore()
+            return False
         self.thread.quit()
         self.worker.cleanup()
         self.saveSettings()
         e.accept()
         
-    def save(self): pass
-    def saveAs(self): pass
-    def open(self): pass
+    def saveChanges(self):
+        if self.isModified:
+            ret = QtGui.QMessageBox.question(self,'Save changes?','Save changes to document?', buttons=QtGui.QMessageBox.Yes|QtGui.QMessageBox.No|QtGui.QMessageBox.Cancel)
+            if ret == QtGui.QMessageBox.Cancel:
+                return False
+            if ret == QtGui.QMessageBox.Yes:
+                if not self.saveAs(self.filename):
+                    return False
+        return True
+        
+    def new(self):
+        if not self.saveChanges(): return False
+        self.editor.setPlainText('')
+        return True
+        
+    def save(self):
+        return self.saveAs(self.filename)
+        
+    def saveAs(self,name=None):
+        if name is None:
+            name, filter = QtGui.QFileDialog.getSaveFileName(self, 'Save file', filter='LaTeX document (*.tex)')
+            if not len(name): return False
+        open(name,'w').write(self.editor.toPlainText())
+        self.isModified = False
+        self.onChange(False)
+        return True
+        
+    def open(self):
+        if not self.saveChanges(): return False
+        name, filter = QtGui.QFileDialog.getOpenFileName(self, 'Open file', filter='LaTeX document (*.tex)')
+        if not len(name): return False
+        self.editor.setPlainText(open(name,'rb').read())
+        return True
         
     def loadSettings(self):
         self.settings = QtCore.QSettings("textonic.ini",QtCore.QSettings.IniFormat)
