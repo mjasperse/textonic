@@ -8,6 +8,7 @@ class TexTonic:
     def __init__(self,res=300):
         self.dir = tempfile.mkdtemp(prefix='textonic_')
         self.gs = 'gswin32c' if os.name == 'nt' else 'gs'
+        self.latex = 'pdflatex'
         self.res = res
         self.outline = True
 
@@ -54,7 +55,7 @@ class TexTonic:
         # create the tex file
         open(psrc,'wb').write(data)
         if os.path.isfile(pdest): os.remove(pdest)
-        if self._exec(['pdflatex','-interaction=nonstopmode',src],cb):
+        if self._exec([self.latex,'-interaction=nonstopmode',src],cb):
             raise RuntimeError('LaTeX failed')
         return dest
         
@@ -107,7 +108,7 @@ class TexTonic:
             elif fmt == 'PDF':
                 iformat = clip.RegisterClipboardFormat('Portable Document Format')
             elif fmt == 'EPS':
-                iformat = clip.RegisterClipboardFormat('Encapsulated Postscript')
+                iformat = clip.RegisterClipboardFormat('Encapsulated PostScript')
             else:
                 raise RuntimeError('Unknown format')
             if data is None:

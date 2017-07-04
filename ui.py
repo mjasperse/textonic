@@ -27,7 +27,7 @@ class WorkerObj(QtCore.QObject):
             return True
         
     def toClipboard(self,fmt):
-        if fmt != 'PDF' or self.hasChanged() or self.tex.outline:
+        if fmt != 'PDF' or self.hasChanged or self.tex.outline:
             self.format = fmt
             if not self.run(): return False
         try:
@@ -98,7 +98,11 @@ class TexTonicUI(QtGui.QMainWindow):
         self.worker.preview.connect(self.newImage)
         self.thread.started.connect(self.worker.run)
         
-        self.loadSettings()
+        if not self.loadSettings(): # need worker to exist to hold settings
+            QtGui.QMessageBox.critical(None, 'Error', 'Cannot find dependent applications, cannot continue')
+            # we cannot quit immediately, instead we schedule a quit
+            QtCore.QTimer.singleShot(0,self.close)
+            return
         
         self.initUI()
         self.initMenu()
@@ -115,23 +119,21 @@ class TexTonicUI(QtGui.QMainWindow):
         self.resize(500,300)
         self.show()
         
-        #self.worker.gs = checkAppExists('Ghostscript','gs',self.settings.value('gs','gs'),'-v')
-        #self.worker.latex = checkAppExists('Latex','latex',self.settings.value('latex','pdflatex'),'--version')
         
-    def checkAppExists(self,name,key,file,*args):
-        success = False
+    def checkAppExists(self,name,file,query):
         try:
-            subprocess.check_output([file]+args,shell=False)
-            return True
+            import subprocess
+            subprocess.check_output([file,query],shell=False)
+            return file
         except Exception as E:
-            ret = QtGui.QMessageBox(self,'Application error',
-                    'Failed to execute %s: %s.\nManually locate executable?'%(name,E),
+            print E
+            ret = QtGui.QMessageBox.question(self,'Application error',
+                    'Failed to execute %s:\n%s.\n\nManually locate executable?'%(name,E),
                     QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
             if ret == QtGui.QMessageBox.Yes:
                 file, filter = QtGui.QFileDialog.getOpenFileName(self,'Locate %s'%name,dir=os.path.dirname(file),filter='Applications (*.exe)')
                 if len(file):
-                    if self.checkAppExists(name,file,*args):
-                        return True
+                    return self.checkAppExists(name,file,query)
         
         
     def initUI(self):
@@ -242,8 +244,8 @@ class TexTonicUI(QtGui.QMainWindow):
         name, filter = QtGui.QFileDialog.getSaveFileName(self,'Save output as', filter='PDF file (*.pdf);;EPS file (*.eps);;PNG image (*.png)')
         if not len(name): return
         format = filter.split(' ',1)[0]
-        self.workerRun(format,False)
-        # copy the output file
+        self.workerRun(format)
+        # TODO: copy the output file
         
     def newImage(self,filename):
         pix = QtGui.QPixmap(filename)
@@ -343,10 +345,21 @@ class TexTonicUI(QtGui.QMainWindow):
         self.worker.tex.outline = self.settings.value('outline','true') == 'true'
         self.auto = self.settings.value('auto','true') == 'true'
         
+        latex = self.checkAppExists('PDFLatex',self.settings.value('latex',self.worker.tex.latex),'--version')
+        if latex is None: return False
+        else: self.worker.tex.latex = latex
+        gs = self.checkAppExists('Ghostscript',self.settings.value('gs',self.worker.tex.gs),'-v')
+        if gs is None: return False
+        else: self.worker.tex.gs = gs
+        return True
+        
     def saveSettings(self):
+        if getattr(self,'settings',None) is None: return
         self.settings.setValue('res',self.worker.tex.res)
         self.settings.setValue('outline',self.worker.tex.outline)
         self.settings.setValue('auto',self.auto)
+        self.settings.setValue('latex',self.worker.tex.latex)
+        self.settings.setValue('gs',self.worker.tex.gs)
         
         
 if __name__ == '__main__':
