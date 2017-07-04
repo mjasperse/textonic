@@ -12,10 +12,14 @@ class WorkerObj(QtCore.QObject):
         self.tex = textonic.TexTonic()
         self.hasChanged = True
         self.format = 'PNG'
+        self.files = {}
         
-    def run(self):
+    def run(self, format=None):
         try:
+            if format is not None:
+                self.format = format
             if self.hasChanged:
+                self.files.clear()
                 self.tex.runLatex(self.data,self.progress.emit)
             dest = self.tex.convert('textonic.pdf',self.format,self.progress.emit)
             if self.format == 'PNG': self.preview.emit(os.path.join(self.tex.dir,dest))
@@ -27,11 +31,13 @@ class WorkerObj(QtCore.QObject):
             return True
         
     def toClipboard(self,fmt):
-        if fmt != 'PDF' or self.hasChanged or self.tex.outline:
-            self.format = fmt
-            if not self.run(): return False
+        filename = 'output.'+fmt
+        if self.hasChanged:
+            if not self.run(fmt): return False
+        if fmt == 'PDF' and not self.tex.outline:
+            filename = 'textonic.pdf'
         try:
-            self.tex.clipboard('output.'+fmt)
+            self.tex.clipboard(filename,fmt)
         except Exception as E:
             self.finished.emit(str(E))
             return False
@@ -247,7 +253,8 @@ class TexTonicUI(QtGui.QMainWindow):
         if not len(name): return
         format = filter.split(' ',1)[0]
         self.workerRun(format)
-        # TODO: copy the output file
+        # copy the output file
+        open(name,'wb').write(open(os.path.join(self.worker.tex.dir,'output.'+format),'rb').read())
         
     def newImage(self,filename):
         if filename is None:
@@ -314,9 +321,8 @@ class TexTonicUI(QtGui.QMainWindow):
             self.fileMenu.actions()[3].setEnabled(self.filename is not None)
             print self.fileMenu.actions()[3].text()
         # start the renderer timer
-        if self.auto: self.autoTimer.start()
+        if modified and self.auto: self.autoTimer.start()
         self.worker.hasChanged = True
-        self.isModified = True
         self.setWindowTitle('TexTonic' + (' (*)' if modified else ''))
         
     def updateIco(self):
@@ -390,7 +396,7 @@ class TexTonicUI(QtGui.QMainWindow):
         self.editor.setPlainText(open(name,'r').read())
         self.editor.blockSignals(False)
         self.onChange(False)
-        self.isModified = False
+        self.workerStart()
         return True
         
     def loadSettings(self):

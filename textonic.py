@@ -60,17 +60,16 @@ class TexTonic:
         return dest
         
     def convert(self, src, fmt, cb=None):
-        # src must be an eps or pdf
-        bbox = self.computeBounds(src)
-        print bbox
-        # bbox is spec in pts
-        w = round((bbox[2]-int(bbox[0]))*self.res/72.0 + 0.5)
-        h = round((bbox[3]-int(bbox[1]))*self.res/72.0 + 0.5)
         gscmd = self._baseGS()
         gsextra = []
         if fmt in ('PNG',2):
             dest = 'output.png'
             dev = 'pngalpha'
+            # src must be an eps or pdf
+            bbox = self.computeBounds(src)
+            # bbox is spec in pts
+            w = round((bbox[2]-int(bbox[0]))*self.res/72.0 + 0.5)
+            h = round((bbox[3]-int(bbox[1]))*self.res/72.0 + 0.5)
             # these need to go AFTER the device specification
             gsextra = ['-g%dx%d'%(w,h),'-c','<</Install {-%d -%d translate}>> setpagedevice'%(int(bbox[0]),int(bbox[1]))]
         else:
