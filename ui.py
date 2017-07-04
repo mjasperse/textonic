@@ -120,7 +120,6 @@ class TexTonicUI(QtGui.QMainWindow):
         self.resize(500,300)
         self.show()
         
-        
     def checkAppExists(self,name,file,query):
         try:
             import subprocess
@@ -135,7 +134,6 @@ class TexTonicUI(QtGui.QMainWindow):
                 file, filter = QtGui.QFileDialog.getOpenFileName(self,'Locate %s'%name,dir=os.path.dirname(file),filter='Applications (*.exe)')
                 if len(file):
                     return self.checkAppExists(name,file,query)
-        
         
     def initUI(self):
         self.setStyleSheet( """
@@ -178,10 +176,13 @@ class TexTonicUI(QtGui.QMainWindow):
     def initMenu(self):
         menu = self.menuBar()
         m = menu.addMenu('&File')
-        m.addAction('&Open',self.open,QtGui.QKeySequence.Open)
-        a = m.addAction('&Save',self.save,QtGui.QKeySequence.Save)
+        self.fileMenu = m
+        m.addAction('&New',self.actionNew,QtGui.QKeySequence.New)
+        m.addAction('&Open',self.actionOpen,QtGui.QKeySequence.Open)
+        m.addSeparator()
+        a = m.addAction('&Save',self.actionSave,QtGui.QKeySequence.Save)
         a.setEnabled(False)
-        m.addAction('Save &As', self.saveAs,QtGui.QKeySequence.SaveAs)
+        m.addAction('Save &As', self.actionSaveAs,QtGui.QKeySequence.SaveAs)
         m.addSeparator()
         m.addAction('&Quit',self.close,QtGui.QKeySequence.Quit)
         
@@ -249,6 +250,10 @@ class TexTonicUI(QtGui.QMainWindow):
         # TODO: copy the output file
         
     def newImage(self,filename):
+        if filename is None:
+            self.preview.clear()
+            self.preview.resize(0,0)
+            return
         pix = QtGui.QPixmap(filename)
         self.preview.resize(pix.size())
         self.preview.setPixmap(pix)
@@ -300,10 +305,16 @@ class TexTonicUI(QtGui.QMainWindow):
             self.statusicon.setPixmap('success.png')
         
     def onChange(self,modified=True):
+        if self.filename is None and not len(self.editor.toPlainText()):
+            return
         if modified and not self.isModified:
             self.isModified = True
             # enable Save menu
-        if modified and self.auto: self.autoTimer.start()
+            print self.filename
+            self.fileMenu.actions()[3].setEnabled(self.filename is not None)
+            print self.fileMenu.actions()[3].text()
+        # start the renderer timer
+        if self.auto: self.autoTimer.start()
         self.worker.hasChanged = True
         self.isModified = True
         self.setWindowTitle('TexTonic' + (' (*)' if modified else ''))
@@ -347,28 +358,39 @@ class TexTonicUI(QtGui.QMainWindow):
                     return False
         return True
         
-    def new(self):
+    def actionNew(self):
         if not self.saveChanges(): return False
+        self.filename = None
         self.editor.setPlainText('')
+        self.onChange(False)
+        self.log.clear()
+        self.log.has_err = False
+        self.newImage(None)
         return True
         
-    def save(self):
-        return self.saveAs(self.filename)
+    def actionSave(self):
+        return self.actionSaveAs(self.filename)
         
-    def saveAs(self,name=None):
+    def actionSaveAs(self,name=None):
         if name is None:
             name, filter = QtGui.QFileDialog.getSaveFileName(self, 'Save file', filter='LaTeX document (*.tex)')
             if not len(name): return False
         open(name,'w').write(self.editor.toPlainText())
+        self.filename = name
         self.isModified = False
         self.onChange(False)
         return True
         
-    def open(self):
+    def actionOpen(self):
         if not self.saveChanges(): return False
         name, filter = QtGui.QFileDialog.getOpenFileName(self, 'Open file', filter='LaTeX document (*.tex)')
         if not len(name): return False
-        self.editor.setPlainText(open(name,'rb').read())
+        self.filename = name
+        self.editor.blockSignals(True)
+        self.editor.setPlainText(open(name,'r').read())
+        self.editor.blockSignals(False)
+        self.onChange(False)
+        self.isModified = False
         return True
         
     def loadSettings(self):
