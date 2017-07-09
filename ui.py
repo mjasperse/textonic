@@ -36,6 +36,8 @@ class WorkerObj(QtCore.QObject):
             if not self.run(fmt): return False
         if fmt == 'PDF' and not self.tex.outline:
             filename = 'textonic.pdf'
+        elif fmt == 'BMP':
+            filename = 'output.png'		
         try:
             self.tex.clipboard(filename,fmt)
         except Exception as E:
@@ -210,7 +212,7 @@ class TexTonicUI(QtGui.QMainWindow):
         m.addAction('&Website',self.website)
         m.addAction('&About',self.about,QtGui.QKeySequence.HelpContents)
         
-        for s, f in [['Copy as EPS',self.copyEPS],['Copy as PDF',self.copyPDF],['Copy as bitmap',self.copyPNG],['Export file',self.saveOutput]]:
+        for s, f in [['Copy as EPS',self.copyEPS],['Copy as PDF',self.copyPDF],['Copy as PNG',self.copyPNG],['Copy as bitmap',self.copyBMP],['Export file',self.saveOutput]]:
             itm = QtGui.QAction(s,self)
             itm.triggered.connect(f)
             self.scroller.addAction(itm)
@@ -238,14 +240,10 @@ class TexTonicUI(QtGui.QMainWindow):
     def openTempDir(self):
         QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(self.worker.tex.dir))
         
-    def copyEPS(self):
-        self.worker.toClipboard('EPS')
-    
-    def copyPDF(self):
-        self.worker.toClipboard('PDF')
-    
-    def copyPNG(self):
-        self.worker.toClipboard('PNG')
+    def copyEPS(self):	self.worker.toClipboard('EPS')
+    def copyPDF(self):	self.worker.toClipboard('PDF')
+    def copyPNG(self):	self.worker.toClipboard('PNG')
+    def copyBMP(self):	self.worker.toClipboard('BMP')
     
     def saveOutput(self):
         name, filter = QtGui.QFileDialog.getSaveFileName(self,'Save output as', filter='PDF file (*.pdf);;EPS file (*.eps);;PNG image (*.png)')

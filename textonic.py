@@ -94,16 +94,20 @@ class TexTonic:
         clip.EmptyClipboard()
         try:
             data = None
-            if fmt == 'PNG':
+            if fmt == 'BMP':
                 from PIL import Image
-                im = Image.open(os.path.join(self.dir,src))
+                png = Image.open(os.path.join(self.dir,src))
                 src += '.bmp'
-                # TODO: blend with background color
-                im.save(os.path.join(self.dir,src),format='bmp')
+                # blend with white
+                bmp = Image.new("RGB", png.size, (255, 255, 255))                
+                bmp.paste(png, mask=png.split()[3])
+                bmp.save(os.path.join(self.dir,src),format='bmp')
                 iformat = clip.CF_DIB
                 with open(os.path.join(self.dir,src),'rb') as f:
                     f.seek(14)  # bypass the BITMAPFILEHEADER
                     data = f.read()
+            elif fmt == 'PNG':
+                iformat = clip.RegisterClipboardFormat('PNG')
             elif fmt == 'PDF':
                 iformat = clip.RegisterClipboardFormat('Portable Document Format')
             elif fmt == 'EPS':
