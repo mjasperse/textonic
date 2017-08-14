@@ -98,7 +98,8 @@ class TexTonic:
                 from PIL import Image
                 png = Image.open(os.path.join(self.dir,src))
                 src += '.bmp'
-                # blend with white
+                # BMP does not really RGBA, so blend with white
+				# https://stackoverflow.com/questions/9166400/convert-rgba-png-to-rgb-with-pil
                 bmp = Image.new("RGB", png.size, (255, 255, 255))                
                 bmp.paste(png, mask=png.split()[3])
                 bmp.save(os.path.join(self.dir,src),format='bmp')
